@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debt Tracker (MongoDB)</title>
+</head>
+<body>
+  <h1>Debts</h1>
+  <ul id="debtList"></ul>
+
+  <script>
+    fetch('/api/debts')
+      .then(res => res.json())
+      .then(data => {
+        const list = document.getElementById('debtList');
+        data.forEach(debt => {
+          const li = document.createElement('li');
+          li.textContent = `${debt.debt_source}: $${debt.minimum_payment} @ ${debt.interest_rate}%`;
+          list.appendChild(li);
+        });
+      });
+  </script>
+</body>
+</html>
