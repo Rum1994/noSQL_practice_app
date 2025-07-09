@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Debt from './models/Debt.js';
 import Grades from './models/Grades.js';
+import Customer from './models/Customer.js'; 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,7 +17,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 mongoose.connect('mongodb://localhost:27017/debts', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-}).then(() => console.log('MongoDB connected'))
+}).then( async () => {console.log('MongoDB connected');
+await createCustomerWithDebt();
+await runApp();})
   .catch(err => console.error('Mongo error', err));
 
 
@@ -30,46 +33,61 @@ app.get('/api/grades', async (req, res) => {
   const grades = await Grades.find();
   res.json(grades);
 });
-async function insertSampleDebt() {
-    const newDebt = new Debt({
-      debt_source: 'cc',
-      interest_rate: 4.5,
-      minimum_payment: 250,
-      debt_amount: 10000,
-      paid_off: false
-    });
-  const newGrades = new Grades({
-    class_name: 'Data management',
-    grade_gpa: 3.8,
-    date_passed: new Date()
-  });
-    try {
-      const savedDebt = await newDebt.save();
-      const saveGrades = await newGrades.save()
-      console.log('Saved debt:', savedDebt);
-      console.log('Saved grades:', saveGrades);
-    } catch (err) {
-      console.error('Error saving debt:', err);
+
+app.get('/api/customers', async (req, res) => {
+  const customers = await Customer.find().populate('debt');
+  res.json(customers);
+});
+
+app.get('/api/debts/total', async (req, res) => {
+  const result = await Debt.aggregate([
+    { $group: { _id: null, totalDebt: { $sum: '$debt_amount' } } }
+  ]);
+  res.json({ totalDebt: result[0]?.totalDebt || 0 });
+
+  const totalDebt = result[0]?.totalDebt || 0;
+
+  console.log('Total Debt:', totalDebt);
+});
+  async function createCustomerWithDebt() {
+    const debt = await Debt.findOne({ debt_source: 'Credit Card' });
+    if (!debt) {
+      console.log('Debt not found');
+      return;
     }
+  
+    const existing = await Customer.findOne({ name: 'John Doe' });
+    if (existing) {
+      console.log('Customer already exists');
+      return;
+    }
+    const customer = new Customer({
+      name: 'John Doe',
+      address: '123 Main St',
+      debt: debt._id
+    });
+  
+    await customer.save();
+
   }
 
-const debts = await Debt.find(); 
-const grades = await Grades.find(); 
 
-console.log(debts, grades); 
+
+
 async function runApp() {
   try {
-    await insertSampleDebt();
+ 
 
     const debts = await Debt.find(); 
     const grades = await Grades.find(); 
+    const customers = await Customer.find().populate('debt');
 
-    console.log('Debts:', debts);
-    console.log('Grades:', grades);
+  // console.log(customers[0])
   } catch (err) {
     console.error('Error:', err);
   }
 }
+
 
 runApp();
 

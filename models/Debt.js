@@ -9,3 +9,5 @@ const debtSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('Debt', debtSchema);
+
+
